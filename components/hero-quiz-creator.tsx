@@ -1,5 +1,5 @@
 "use client"
-
+import Link from "next/link";
 import { useState } from "react"
 import { Sparkles, Wand2, ChevronDown } from "lucide-react"
 
@@ -93,10 +93,12 @@ export function HeroQuizCreator() {
                 aria-label="Quiz topic"
               />
             </div>
-            <button className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-7 py-4 text-lg font-bold text-primary-foreground shadow-lg shadow-primary/40 transition-all hover:scale-[1.03] hover:shadow-primary/60 active:scale-95">
-              <Sparkles className="size-5" />
-              Generate Quiz
-            </button>
+            <Link href="/generating">
+  <button className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-7 py-4 text-lg font-bold text-primary-foreground shadow-lg shadow-primary/40 transition-all hover:scale-[1.03] hover:shadow-primary/60 active:scale-95">
+    <Sparkles className="size-5" />
+    Generate Quiz
+  </button>
+</Link>
           </div>
         </div>
       </div>
