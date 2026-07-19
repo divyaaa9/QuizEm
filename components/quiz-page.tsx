@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import {
   Atom,
@@ -35,90 +35,20 @@ type Question = {
   prompt: string
   type: 'single' | 'multiple'
   options: string[]
-  correctAnswer: string[] // one or more correct option strings
-  reason: string // shown under the question once submitted
+  correctAnswer: string[]
+  reason: string
 }
 
-const questions: Question[] = [
+// Fallback sample so this component still renders something sane
+// if it's ever used without real data (e.g. direct testing).
+const DEFAULT_QUESTIONS: Question[] = [
   {
     id: 1,
     prompt: 'Which keyword is used to define a function in Python?',
     type: 'single',
     options: ['func', 'def', 'function', 'define'],
     correctAnswer: ['def'],
-    reason: "Python functions are declared with the `def` keyword, followed by the function name and parentheses.",
-  },
-  {
-    id: 2,
-    prompt: 'Which of these are mutable Python data types?',
-    type: 'multiple',
-    options: ['List', 'Tuple', 'Dictionary', 'Set'],
-    correctAnswer: ['List', 'Dictionary', 'Set'],
-    reason: 'Lists, dictionaries, and sets can be changed after creation. Tuples are immutable — once created, their contents can\u2019t change.',
-  },
-  {
-    id: 3,
-    prompt: 'What does the len() function return?',
-    type: 'single',
-    options: ['The data type', 'The memory size', 'The number of items', 'The final item'],
-    correctAnswer: ['The number of items'],
-    reason: '`len()` returns the number of items in a sequence or collection, such as characters in a string or elements in a list.',
-  },
-  {
-    id: 4,
-    prompt: 'Which operators can compare two values in Python?',
-    type: 'multiple',
-    options: ['==', '!=', '>=', 'and'],
-    correctAnswer: ['==', '!=', '>='],
-    reason: '`==`, `!=`, and `>=` are comparison operators. `and` is a logical operator used to combine boolean expressions, not to compare two values directly.',
-  },
-  {
-    id: 5,
-    prompt: 'What is the output of print(2 ** 3)?',
-    type: 'single',
-    options: ['6', '8', '9', '23'],
-    correctAnswer: ['8'],
-    reason: '`**` is the exponentiation operator, so `2 ** 3` computes 2 to the power of 3, which is 8.',
-  },
-  {
-    id: 6,
-    prompt: 'Which statement is used to handle an exception?',
-    type: 'single',
-    options: ['catch', 'except', 'error', 'rescue'],
-    correctAnswer: ['except'],
-    reason: 'Python uses `try`/`except` blocks to catch and handle exceptions. `catch` and `rescue` are keywords from other languages.',
-  },
-  {
-    id: 7,
-    prompt: 'Which values evaluate to False in Python?',
-    type: 'multiple',
-    options: ['0', 'None', 'An empty list', 'A non-empty string'],
-    correctAnswer: ['0', 'None', 'An empty list'],
-    reason: '`0`, `None`, and empty collections (like `[]`) are all falsy. Any non-empty string is truthy.',
-  },
-  {
-    id: 8,
-    prompt: 'What does a Python dictionary store?',
-    type: 'single',
-    options: ['Only numbers', 'Ordered characters', 'Key-value pairs', 'Unique values only'],
-    correctAnswer: ['Key-value pairs'],
-    reason: 'A dictionary stores data as key-value pairs, letting you look up a value quickly using its associated key.',
-  },
-  {
-    id: 9,
-    prompt: 'Which tools are commonly used to install Python packages?',
-    type: 'multiple',
-    options: ['pip', 'poetry', 'npm', 'conda'],
-    correctAnswer: ['pip', 'poetry', 'conda'],
-    reason: '`pip`, `poetry`, and `conda` are Python package managers. `npm` is the package manager for Node.js/JavaScript.',
-  },
-  {
-    id: 10,
-    prompt: 'Which symbol begins a single-line comment in Python?',
-    type: 'single',
-    options: ['//', '#', '--', '/*'],
-    correctAnswer: ['#'],
-    reason: 'Python uses `#` to start a single-line comment. `//`, `--`, and `/* */` are comment syntax from other languages.',
+    reason: 'Python functions are declared with the `def` keyword.',
   },
 ]
 
@@ -187,17 +117,47 @@ function FloatingEducationIcons() {
   )
 }
 
-function Navbar({ answered, submitted, onSubmit }: { answered: number; submitted: boolean; onSubmit: () => void }) {
+function Navbar({
+  topic,
+  answered,
+  total,
+  submitted,
+  onSubmit,
+  mode,
+  timerSeconds,
+  isUrgent,
+}: {
+  topic: string
+  answered: number
+  total: number
+  submitted: boolean
+  onSubmit: () => void
+  mode: string
+  timerSeconds: number | null
+  isUrgent: boolean
+}) {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/88 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 md:px-8">
         <Logo />
-        <p className="hidden text-sm font-semibold text-muted-foreground md:block">Python Fundamentals</p>
+        <p className="hidden truncate text-sm font-semibold text-muted-foreground md:block">{topic}</p>
         <div className="flex items-center gap-2 md:gap-3">
-          <span className="hidden items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold sm:flex">
-            <Timer className="size-4 text-primary" aria-hidden="true" /> 07:42
+          {mode !== 'Classic' && timerSeconds !== null && (
+            <span
+              className={cn(
+                'hidden items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold sm:flex',
+                isUrgent
+                  ? 'border-destructive/60 bg-destructive/10 text-destructive'
+                  : 'border-border bg-card'
+              )}
+            >
+              <Timer className={cn('size-4', isUrgent ? 'text-destructive' : 'text-primary')} aria-hidden="true" />
+              {formatTime(timerSeconds)}
+            </span>
+          )}
+          <span className="text-sm font-semibold text-muted-foreground">
+            {answered}/{total}
           </span>
-          <span className="text-sm font-semibold text-muted-foreground">{answered}/10</span>
           <Button size="sm" className="quiz-glow" onClick={onSubmit} disabled={submitted}>
             <Send data-icon="inline-start" />
             {submitted ? 'Submitted' : 'Submit'}
@@ -238,13 +198,19 @@ function QuestionCard({
       >
         <CardHeader className="flex-row items-start justify-between gap-5 px-5 pt-6 md:px-7 md:pt-7">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 font-mono text-sm font-bold text-primary">{String(question.id).padStart(2, '0')}</span>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 font-mono text-sm font-bold text-primary">
+              {String(question.id).padStart(2, '0')}
+            </span>
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Question {question.id}</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Question {question.id}
+              </span>
               <CardTitle className="text-pretty text-lg leading-snug md:text-xl">{question.prompt}</CardTitle>
             </div>
           </div>
-          <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">{question.type === 'single' ? 'Single Answer' : 'Multiple Answer'}</Badge>
+          <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">
+            {question.type === 'single' ? 'Single Answer' : 'Multiple Answer'}
+          </Badge>
         </CardHeader>
         <CardContent className="px-5 pb-6 md:px-7 md:pb-7">
           <div className="grid gap-3.5 sm:grid-cols-2">
@@ -265,8 +231,10 @@ function QuestionCard({
                   className={cn(
                     'group flex min-h-16 items-center gap-3 rounded-2xl border border-border/70 bg-secondary/30 px-4 py-3 text-left text-sm font-medium transition-[background-color,border-color,box-shadow] duration-300 ease-out hover:border-primary/35 hover:bg-secondary/60 hover:shadow-[0_10px_28px_rgb(0_0_0/0.16)]',
                     isSelected && !submitted && 'border-primary/80 bg-primary/10 shadow-[0_0_26px_var(--glow-soft)]',
-                    showAsCorrect && 'border-[color:var(--success)] bg-[color:var(--success)]/10 shadow-none hover:border-[color:var(--success)] hover:bg-[color:var(--success)]/10',
-                    showAsWrong && 'border-destructive bg-destructive/10 shadow-none hover:border-destructive hover:bg-destructive/10',
+                    showAsCorrect &&
+                      'border-[color:var(--success)] bg-[color:var(--success)]/10 shadow-none hover:border-[color:var(--success)] hover:bg-[color:var(--success)]/10',
+                    showAsWrong &&
+                      'border-destructive bg-destructive/10 shadow-none hover:border-destructive hover:bg-destructive/10',
                     submitted && 'cursor-default'
                   )}
                   aria-pressed={isSelected}
@@ -311,7 +279,9 @@ function QuestionCard({
                   >
                     {option}
                   </span>
-                  {showAsCorrect && <Check className="ml-auto size-4 shrink-0 text-[color:var(--success)]" aria-hidden="true" />}
+                  {showAsCorrect && (
+                    <Check className="ml-auto size-4 shrink-0 text-[color:var(--success)]" aria-hidden="true" />
+                  )}
                   {showAsWrong && <X className="ml-auto size-4 shrink-0 text-destructive" aria-hidden="true" />}
                 </motion.button>
               )
@@ -322,14 +292,16 @@ function QuestionCard({
             <div
               className={cn(
                 'mt-4 rounded-2xl border px-4 py-3.5 text-sm',
-                isQuestionCorrect ? 'border-[color:var(--success)]/35 bg-[color:var(--success)]/5' : 'border-border/70 bg-secondary/30'
+                isQuestionCorrect
+                  ? 'border-[color:var(--success)]/35 bg-[color:var(--success)]/5'
+                  : 'border-border/70 bg-secondary/30'
               )}
             >
               <p className="font-semibold text-foreground">
                 Correct answer{question.correctAnswer.length > 1 ? 's' : ''}:{' '}
                 <span className="text-[color:var(--success)]">{question.correctAnswer.join(', ')}</span>
               </p>
-              <p className="mt-1 leading-relaxed text-muted-foreground">{question.reason}</p>
+              {question.reason && <p className="mt-1 leading-relaxed text-muted-foreground">{question.reason}</p>}
             </div>
           )}
         </CardContent>
@@ -338,7 +310,15 @@ function QuestionCard({
   )
 }
 
-function Navigator({ answers, submitted }: { answers: Answers; submitted: boolean }) {
+function Navigator({
+  questions,
+  answers,
+  submitted,
+}: {
+  questions: Question[]
+  answers: Answers
+  submitted: boolean
+}) {
   return (
     <div className="grid grid-cols-5 gap-2">
       {questions.map((question) => {
@@ -365,17 +345,30 @@ function Navigator({ answers, submitted }: { answers: Answers; submitted: boolea
   )
 }
 
-function ResultsCard({ answers }: { answers: Answers }) {
+function ResultsCard({
+  questions,
+  answers,
+  timedOut,
+  timedSeconds,
+  mode,
+}: {
+  questions: Question[]
+  answers: Answers
+  timedOut: boolean
+  timedSeconds: number
+  mode: string
+}) {
   const correctCount = questions.filter((q) => arraysEqualAsSets(answers[q.id] ?? [], q.correctAnswer)).length
   const total = questions.length
-  const percentage = Math.round((correctCount / total) * 100)
+  const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0
 
-  const tier =
-    percentage >= 80
-      ? { label: 'Excellent work!', color: 'var(--success)' }
-      : percentage >= 50
-      ? { label: 'Good effort — keep practicing.', color: 'var(--accent)' }
-      : { label: "Don't worry, review the explanations below.", color: 'var(--destructive)' }
+  const tier = timedOut
+    ? { label: "Time's up! Here's how you did.", color: 'var(--destructive)' }
+    : percentage >= 80
+    ? { label: 'Excellent work!', color: 'var(--success)' }
+    : percentage >= 50
+    ? { label: 'Good effort — keep practicing.', color: 'var(--accent)' }
+    : { label: "Don't worry, review the explanations below.", color: 'var(--destructive)' }
 
   return (
     <motion.div
@@ -394,17 +387,20 @@ function ResultsCard({ answers }: { answers: Answers }) {
             <Trophy className="size-7 text-primary" aria-hidden="true" />
           </span>
           <CardTitle className="text-2xl">Quiz Results</CardTitle>
-          <p className="text-sm font-medium" style={{ color: tier.color }}>{tier.label}</p>
+          <p className="text-sm font-medium" style={{ color: tier.color }}>
+            {tier.label}
+          </p>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-5 px-5 pb-8 md:px-7">
           <p className="text-5xl font-extrabold" style={{ color: tier.color }}>
-            {correctCount}<span className="text-2xl text-muted-foreground"> / {total}</span>
+            {correctCount}
+            <span className="text-2xl text-muted-foreground"> / {total}</span>
           </p>
           <div className="w-full max-w-sm">
             <Progress value={percentage} />
             <p className="mt-2 text-center text-sm text-muted-foreground">{percentage}% correct</p>
           </div>
-          <div className="grid w-full grid-cols-3 gap-3 sm:max-w-md">
+          <div className={cn('grid w-full gap-3', mode === 'Timed' ? 'grid-cols-4' : 'grid-cols-3', 'sm:max-w-md')}>
             <div className="rounded-2xl border border-border/65 bg-secondary/30 px-4 py-3 text-center">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Correct</p>
               <p className="mt-1 text-xl font-bold text-[color:var(--success)]">{correctCount}</p>
@@ -417,6 +413,12 @@ function ResultsCard({ answers }: { answers: Answers }) {
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Score</p>
               <p className="mt-1 text-xl font-bold text-primary">{percentage}%</p>
             </div>
+            {mode === 'Timed' && (
+              <div className="rounded-2xl border border-border/65 bg-secondary/30 px-4 py-3 text-center">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Time</p>
+                <p className="mt-1 text-xl font-bold text-primary">{formatTime(timedSeconds)}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -424,18 +426,75 @@ function ResultsCard({ answers }: { answers: Answers }) {
   )
 }
 
-export function QuizPage() {
-  const [answers, setAnswers] = useState<Answers>({ 1: ['def'], 2: ['List', 'Dictionary'] })
+export type QuizData = {
+  topic: string
+  difficulty: string
+  count: number
+  mode: string
+  timeLimit?: number // minutes, only used in Survival mode
+  questions: Question[]
+}
+
+function formatTime(totalSeconds: number) {
+  const clamped = Math.max(0, totalSeconds)
+  const m = Math.floor(clamped / 60)
+  const s = clamped % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+export function QuizPage({ quizData }: { quizData?: QuizData }) {
+  const topic = quizData?.topic ?? 'Sample Quiz'
+  const difficulty = quizData?.difficulty ?? 'Medium'
+  const mode = quizData?.mode ?? 'Classic'
+  const questions = quizData?.questions?.length ? quizData.questions : DEFAULT_QUESTIONS
+  const total = questions.length
+
+  const [answers, setAnswers] = useState<Answers>({})
   const [submitted, setSubmitted] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
   const answered = useMemo(() => Object.values(answers).filter((items) => items.length > 0).length, [answers])
-  const progress = answered * 10
+  const progress = total > 0 ? Math.round((answered / total) * 100) : 0
+
+  // Timed mode: counts up from 0. Survival mode: counts down from timeLimit, auto-submits at 0.
+  const survivalStartSeconds = (quizData?.timeLimit ?? 5) * 60
+  const [timedSeconds, setTimedSeconds] = useState(0)
+  const [survivalSeconds, setSurvivalSeconds] = useState(survivalStartSeconds)
+
+  useEffect(() => {
+    if (mode === 'Classic' || submitted) return
+
+    const interval = setInterval(() => {
+      if (mode === 'Timed') {
+        setTimedSeconds((s) => s + 1)
+      } else if (mode === 'Survival') {
+        setSurvivalSeconds((s) => {
+          if (s <= 1) {
+            clearInterval(interval)
+            setTimedOut(true)
+            handleSubmit()
+            return 0
+          }
+          return s - 1
+        })
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, submitted])
+
+  const timerSeconds = mode === 'Timed' ? timedSeconds : mode === 'Survival' ? survivalSeconds : null
+  const isUrgent = mode === 'Survival' && survivalSeconds <= 30 && survivalSeconds > 0
 
   const selectAnswer = (question: Question, option: string) => {
     if (submitted) return
     setAnswers((current) => {
       if (question.type === 'single') return { ...current, [question.id]: [option] }
       const selected = current[question.id] ?? []
-      return { ...current, [question.id]: selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option] }
+      return {
+        ...current,
+        [question.id]: selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option],
+      }
     })
   }
 
@@ -449,23 +508,52 @@ export function QuizPage() {
   const handleReset = () => {
     setAnswers({})
     setSubmitted(false)
+    setTimedOut(false)
+    setTimedSeconds(0)
+    setSurvivalSeconds(survivalStartSeconds)
   }
 
   return (
     <main id="top" className="blueprint relative min-h-screen overflow-clip bg-background text-foreground">
       <FloatingEducationIcons />
-      <Navbar answered={answered} submitted={submitted} onSubmit={handleSubmit} />
+      <Navbar
+        topic={topic}
+        answered={answered}
+        total={total}
+        submitted={submitted}
+        onSubmit={handleSubmit}
+        mode={mode}
+        timerSeconds={timerSeconds}
+        isUrgent={isUrgent}
+      />
 
       <div className="relative mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
         <section className="hero-card mb-12 overflow-hidden rounded-3xl border border-primary/15 bg-card p-6 shadow-[0_22px_65px_rgb(0_0_0/0.22),0_0_45px_var(--glow-soft)] md:p-9 lg:mb-16">
           <div className="flex flex-col justify-between gap-8 xl:flex-row xl:items-end">
             <div className="flex min-w-0 flex-col gap-3">
-              <Badge variant="outline" className="w-fit border-primary/35 text-primary"><Sparkles data-icon="inline-start" />Quiz &apos;em on anything.</Badge>
-              <h1 className="text-balance text-3xl font-extrabold tracking-tight md:text-5xl">Python Fundamentals</h1>
-              <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">Test your core Python knowledge across syntax, data structures, operators, and package tools.</p>
+              <Badge variant="outline" className="w-fit border-primary/35 text-primary">
+                <Sparkles data-icon="inline-start" />
+                Quiz &apos;em on anything.
+              </Badge>
+              <h1 className="text-balance text-3xl font-extrabold tracking-tight md:text-5xl">{topic}</h1>
+              <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
+                Test your knowledge across {total} questions on {topic}.
+              </p>
             </div>
             <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-xl">
-              {[['Difficulty', 'Medium'], ['Questions', '10'], ['Mode', 'Classic'], ['Est. time', '8 mins']].map(([label, value]) => (
+              {[
+                ['Difficulty', difficulty],
+                ['Questions', String(total)],
+                ['Mode', mode],
+                [
+                  mode === 'Survival' ? 'Time limit' : mode === 'Timed' ? 'Elapsed' : 'Est. time',
+                  mode === 'Survival'
+                    ? formatTime(survivalStartSeconds)
+                    : mode === 'Timed'
+                    ? formatTime(timedSeconds)
+                    : `${Math.max(1, Math.round(total * 0.8))} mins`,
+                ],
+              ].map(([label, value]) => (
                 <div key={label} className="min-w-0 rounded-2xl border border-border/65 bg-secondary/30 px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
                   <p className="mt-1 font-semibold text-foreground">{value}</p>
@@ -490,39 +578,66 @@ export function QuizPage() {
 
           <aside className="hidden lg:sticky lg:top-32 lg:flex lg:flex-col lg:gap-4">
             <Card className="quiz-card">
-              <CardHeader><CardTitle className="text-base">Your progress</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-base">Your progress</CardTitle>
+              </CardHeader>
               <CardContent className="flex flex-col gap-5">
-                <div className="flex items-end justify-between"><strong className="text-4xl font-extrabold text-primary">{progress}%</strong><span className="text-xs text-muted-foreground">{submitted ? 'Submitted' : 'Keep going'}</span></div>
+                <div className="flex items-end justify-between">
+                  <strong className="text-4xl font-extrabold text-primary">{progress}%</strong>
+                  <span className="text-xs text-muted-foreground">{submitted ? 'Submitted' : 'Keep going'}</span>
+                </div>
                 <Progress value={progress} />
                 <dl className="flex flex-col gap-3 text-sm">
-                  <div className="flex justify-between"><dt className="text-muted-foreground">Answered</dt><dd className="font-bold">{answered}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted-foreground">Remaining</dt><dd className="font-bold">{10 - answered}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted-foreground">Mode</dt><dd className="font-bold">Classic</dd></div>
-                  <div className="flex justify-between"><dt className="flex items-center gap-2 text-muted-foreground"><Clock3 className="size-4" />Time left</dt><dd className="font-bold text-primary">07:42</dd></div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Answered</dt>
+                    <dd className="font-bold">{answered}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Remaining</dt>
+                    <dd className="font-bold">{total - answered}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Mode</dt>
+                    <dd className="font-bold">{mode}</dd>
+                  </div>
                 </dl>
-                <div><p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Question navigator</p><Navigator answers={answers} submitted={submitted} /></div>
+                <div>
+                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Question navigator
+                  </p>
+                  <Navigator questions={questions} answers={answers} submitted={submitted} />
+                </div>
               </CardContent>
             </Card>
           </aside>
         </div>
 
-        {/* Results card — appears at the bottom of the page once the quiz is submitted */}
         {submitted && (
           <div className="mt-10 md:mt-12">
-            <ResultsCard answers={answers} />
+            <ResultsCard
+              questions={questions}
+              answers={answers}
+              timedOut={timedOut}
+              timedSeconds={timedSeconds}
+              mode={mode}
+            />
           </div>
         )}
       </div>
 
       <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-2xl backdrop-blur-xl md:bottom-6 md:right-6">
-        <Button variant="ghost" size="sm" className="hidden sm:inline-flex"><Save data-icon="inline-start" />Save</Button>
-        <Button variant="ghost" size="sm" onClick={handleReset}><RotateCcw data-icon="inline-start" />Reset</Button>
+        <Button variant="ghost" size="sm" onClick={handleReset}>
+          <RotateCcw data-icon="inline-start" />
+          Reset
+        </Button>
         <Button size="sm" className="quiz-glow" onClick={handleSubmit} disabled={submitted}>
           <Send data-icon="inline-start" />
           {submitted ? 'Submitted' : 'Submit Quiz'}
         </Button>
       </div>
-      <div className="pointer-events-none fixed bottom-8 left-8 hidden text-primary/10 xl:block"><BookOpen className="size-20" aria-hidden="true" /></div>
+      <div className="pointer-events-none fixed bottom-8 left-8 hidden text-primary/10 xl:block">
+        <BookOpen className="size-20" aria-hidden="true" />
+      </div>
     </main>
   )
 }
