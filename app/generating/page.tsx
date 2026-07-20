@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { QuizBackground } from '@/components/quiz-background'
 import { QuizFunFacts } from '@/components/quiz-fun-facts'
 
-export default function Page() {
+function GeneratingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +39,6 @@ export default function Page() {
 
         const data = await res.json()
 
-        // Transform API shape -> the shape components/quiz-page.tsx expects
         const questions = data.questions.map((q: any, i: number) => ({
           id: i + 1,
           prompt: q.question,
@@ -104,5 +103,13 @@ export default function Page() {
         )}
       </div>
     </main>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <GeneratingContent />
+    </Suspense>
   )
 }
