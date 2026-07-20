@@ -451,6 +451,7 @@ export function QuizPage({ quizData }: { quizData?: QuizData }) {
 
   const [answers, setAnswers] = useState<Answers>({})
   const [submitted, setSubmitted] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   const answered = useMemo(() => Object.values(answers).filter((items) => items.length > 0).length, [answers])
   const progress = total > 0 ? Math.round((answered / total) * 100) : 0
@@ -498,12 +499,35 @@ export function QuizPage({ quizData }: { quizData?: QuizData }) {
     })
   }
 
-  const handleSubmit = () => {
-    setSubmitted(true)
-    setTimeout(() => {
-      document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 60)
-  }
+const handleSubmit = () => {
+  setSubmitted(true)
+  setTimeout(() => {
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, 60)
+
+  const correctCount = questions.filter((q) => arraysEqualAsSets(answers[q.id] ?? [], q.correctAnswer)).length
+  fetch('/api/quiz-history', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      topic,
+      difficulty,
+      mode,
+      score: correctCount,
+      total: questions.length,
+      quizData,
+    }),
+  }).catch(() => {})
+}
+
+const saveQuiz = async () => {
+  const res = await fetch('/api/saved-quizzes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topic, difficulty, mode, quizData }),
+  })
+  if (res.ok) setSaved(true)
+}
 
   const handleReset = () => {
     setAnswers({})
@@ -626,6 +650,10 @@ export function QuizPage({ quizData }: { quizData?: QuizData }) {
       </div>
 
       <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-2xl backdrop-blur-xl md:bottom-6 md:right-6">
+	<Button variant="ghost" size="sm" onClick={saveQuiz} disabled={saved}>
+    <Save data-icon="inline-start" />
+    {saved ? 'Saved' : 'Save Quiz'}
+  </Button>
         <Button variant="ghost" size="sm" onClick={handleReset}>
           <RotateCcw data-icon="inline-start" />
           Reset
